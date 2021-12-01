@@ -12,7 +12,6 @@
 #include "ModuleScene.h"
 #include "Timer.h"
 
-#include "Optick/include/optick.h"
 
 #define FPS 60
 #define FRAME_TIME (1.0/FPS)
@@ -42,7 +41,6 @@ public:
 	bool Init();
 	UpdateStatus Update();
 	bool CleanUp();
-	void SleepUntilFrameTime();
 
 private:
 
