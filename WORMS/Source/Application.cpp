@@ -13,10 +13,6 @@ Application::Application()
 	physics = new ModulePhysics(this);
 	scene = new ModuleScene(this);
 
-	// The order of calls is very important!
-	// Modules will Init() Start() and Update in this order
-	// They will CleanUp() in reverse order
-
 	// Main Modules
 	AddModule(window);
 	AddModule(physics);
@@ -113,7 +109,6 @@ UpdateStatus Application::Update()
 void Application::SleepUntilFrameTime()
 {
 	OPTICK_EVENT("Wait");
-	//OPTICK_CATEGORY("Wait", Optick::Category::Wait);
 	globalTimer.Update();
 
 	deltaTime = globalTimer.getDeltaTime();

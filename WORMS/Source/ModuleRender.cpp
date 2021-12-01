@@ -210,7 +210,7 @@ bool ModuleRender::DrawCircle(int x, int y, int radius, Uint8 r, Uint8 g, Uint8 
 
 void ModuleRender::CameraMove(iPoint pos)
 {
-	camera.x = pos.x + (SCREEN_WIDTH / 2);	//	Camera position = target position
+	camera.x = pos.x + (SCREEN_WIDTH / 2);	
 
 	camera.y = pos.y;
 }
