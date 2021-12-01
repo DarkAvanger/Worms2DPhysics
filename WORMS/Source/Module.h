@@ -1,50 +1,81 @@
-#ifndef __MODULE_H__
-#define __MODULE_H__
+#ifndef _MODULE_H_
+#define _MODULE_H_
 
 #include "Globals.h"
 
-struct Collider;
+class Application;
+class PhysBody;
 
 class Module
 {
+private :
+	bool enabled;
+
 public:
-	Module(bool startEnabled);
 
-	virtual ~Module() { }
+	Application* App;
 
-	// Called at the beginning of the application execution
-	virtual bool Init();
+	Module(Application* parent, bool start_enabled = true) : App(parent), enabled(start_enabled)
+	{}
 
-	// Called when the module is activated
-	// By now we will consider all modules to be permanently active
-	virtual bool Start();
+	virtual ~Module()
+	{}
 
-	// Called at the beginning of each application loop
-	virtual UpdateResult PreUpdate();
+	bool IsEnabled() const
+	{
+		return enabled;
+	}
 
-	// Called at the middle of each application loop
-	virtual UpdateResult Update();
+	void Enable()
+	{
+		if(enabled == false)
+		{
+			enabled = true;
+			Start();
+		}
+	}
 
-	// Called at the end of each application loop
-	virtual UpdateResult PostUpdate();
+	void Disable()
+	{
+		if(enabled == true)
+		{
+			enabled = false;
+			CleanUp();
+		}
+	}
 
-	// Called at the end of the application
-	virtual bool CleanUp();
+	virtual bool Init() 
+	{
+		return true; 
+	}
 
-	// Called when two colliders are intersecting
-	// and the module is registered as the listener
-	virtual void OnCollision(Collider* c1, Collider* c2);
+	virtual bool Start()
+	{
+		return true;
+	}
 
-	// Switches isEnabled and calls Start() method
-	void Enable();
+	virtual UpdateStatus PreUpdate()
+	{
+		return UPDATE_CONTINUE;
+	}
 
-	// Switches isEnabled and calls CleanUp() method
-	void Disable();
+	virtual UpdateStatus Update()
+	{
+		return UPDATE_CONTINUE;
+	}
 
-	inline bool IsEnabled() const { return isEnabled; }
+	virtual UpdateStatus PostUpdate()
+	{
+		return UPDATE_CONTINUE;
+	}
 
-private:
-	bool isEnabled = true;
+	virtual bool CleanUp() 
+	{ 
+		return true; 
+	}
+
+	virtual void OnCollision(PhysBody* body1, PhysBody* body2)
+	{ }
 };
 
-#endif // __MODULE_H__
+#endif

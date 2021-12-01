@@ -1,121 +1,126 @@
+#include "Globals.h"
+#include "Application.h"
 #include "ModuleRender.h"
 
-#include "Application.h"
-
-#include "ModuleWindow.h"
-#include "ModuleTextures.h"
-#include "ModuleInput.h"
-
-#include "SDL/include/SDL_render.h"
-#include "SDL/include/SDL_scancode.h"
-
-ModuleRender::ModuleRender(bool startEnabled) : Module(startEnabled)
+ModuleRender::ModuleRender(Application* app, bool start_enabled) : Module(app, start_enabled)
 {
-
+	renderer = NULL;
+	camera.x = camera.y = 0;
+	camera.w = SCREEN_WIDTH;
+	camera.h = SCREEN_HEIGHT;
 }
 
+// Destructor
 ModuleRender::~ModuleRender()
-{
+{}
 
-}
-
+// Called before render is available
 bool ModuleRender::Init()
 {
 	LOG("Creating Renderer context");
-	bool ret = true;	
+	bool ret = true;
 	Uint32 flags = 0;
 
-	if (VSYNC == true) flags |= SDL_RENDERER_PRESENTVSYNC;
+	if(VSYNC == true)
+	{
+		flags |= SDL_RENDERER_PRESENTVSYNC;
+	}
 
 	renderer = SDL_CreateRenderer(App->window->window, -1, flags);
-
-	if (renderer == nullptr)
+	
+	if(renderer == NULL)
 	{
 		LOG("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
 		ret = false;
 	}
 
-	// L10: DONE: Set render logical size
-	SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
 	return ret;
 }
 
-// Called every draw update
-UpdateResult ModuleRender::PreUpdate()
+// PreUpdate: clear buffer
+UpdateStatus ModuleRender::PreUpdate()
 {
-	// Set the color used for drawing operations
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-
-	// Clear rendering target
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 	SDL_RenderClear(renderer);
-
-	return UpdateResult::UPDATE_CONTINUE;
+	return UPDATE_CONTINUE;
 }
 
-UpdateResult ModuleRender::Update()
+// Update: debug camera
+UpdateStatus ModuleRender::Update()
 {
-	// Handle positive vertical movement
-	if (App->input->keys[SDL_SCANCODE_UP] == KEY_REPEAT) camera.y -= cameraSpeed;
+	
+	int speed = 3;
 
-	// Handle negative vertical movement
-	if (App->input->keys[SDL_SCANCODE_DOWN] == KEY_REPEAT) camera.y += cameraSpeed;
+	if(App->input->GetKey(SDL_SCANCODE_UP) == KEY_REPEAT)
+		App->renderer->camera.y += speed;
 
-	// L4: DONE 1: Handle horizontal movement of the camera
-	if (App->input->keys[SDL_SCANCODE_LEFT] == KEY_REPEAT) camera.x -= cameraSpeed;
-	if (camera.x < 0) camera.x = 0;
+	if(App->input->GetKey(SDL_SCANCODE_DOWN) == KEY_REPEAT)
+		App->renderer->camera.y -= speed;
 
-	if (App->input->keys[SDL_SCANCODE_RIGHT] == KEY_REPEAT) camera.x += cameraSpeed;
+	if(App->input->GetKey(SDL_SCANCODE_LEFT) == KEY_REPEAT)
+		App->renderer->camera.x += speed;
 
-	return UpdateResult::UPDATE_CONTINUE;
+	if(App->input->GetKey(SDL_SCANCODE_RIGHT) == KEY_REPEAT)
+		App->renderer->camera.x -= speed;
+	
+	return UPDATE_CONTINUE;
 }
 
-UpdateResult ModuleRender::PostUpdate()
+// PostUpdate present buffer to screen
+UpdateStatus ModuleRender::PostUpdate()
 {
-	// Update the screen
+	OPTICK_EVENT("Render");
+	//OPTICK_CATEGORY("Render", Optick::Category::Rendering);
 	SDL_RenderPresent(renderer);
-
-	return UpdateResult::UPDATE_CONTINUE;
+	return UPDATE_CONTINUE;
 }
 
+// Called before quitting
 bool ModuleRender::CleanUp()
 {
 	LOG("Destroying renderer");
 
-	// Destroy the rendering context
-	if (renderer != nullptr) SDL_DestroyRenderer(renderer);
+	//Destroy window
+	if(renderer != NULL)
+	{
+		SDL_DestroyRenderer(renderer);
+	}
 
 	return true;
 }
 
-// Draw to screen
-bool ModuleRender::DrawTexture(SDL_Texture* texture, int x, int y, SDL_Rect* section, float speed, bool useCamera)
+// Blit to screen
+bool ModuleRender::Blit(SDL_Texture* texture, int x, int y, SDL_Rect* section, float speed, double angle,SDL_RendererFlip flip, int pivot_x, int pivot_y )
 {
 	bool ret = true;
+	SDL_Rect rect;
+	rect.x = (int) (camera.x * speed) + x * SCREEN_SIZE;
+	rect.y = (int) (camera.y * speed) + y * SCREEN_SIZE;
 
-	SDL_Rect dstRect{ x * SCREEN_SIZE, y * SCREEN_SIZE, 0, 0 };
-
-	if (useCamera)
+	if(section != NULL)
 	{
-		dstRect.x -= (camera.x * speed);
-		dstRect.y -= (camera.y * speed);
-	}
-
-	if (section != nullptr)
-	{
-		dstRect.w = section->w;
-		dstRect.h = section->h;
+		rect.w = section->w;
+		rect.h = section->h;
 	}
 	else
 	{
-		// Collect the texture size into rect.w and rect.h variables
-		SDL_QueryTexture(texture, nullptr, nullptr, &dstRect.w, &dstRect.h);
+		SDL_QueryTexture(texture, NULL, NULL, &rect.w, &rect.h);
 	}
 
-	dstRect.w *= SCREEN_SIZE;
-	dstRect.h *= SCREEN_SIZE;
+	rect.w *= SCREEN_SIZE;
+	rect.h *= SCREEN_SIZE;
 
-	if (SDL_RenderCopy(renderer, texture, section, &dstRect) != 0)
+	SDL_Point* p = NULL;
+	SDL_Point pivot;
+
+	if(pivot_x != INT_MAX && pivot_y != INT_MAX)
+	{
+		pivot.x = pivot_x;
+		pivot.y = pivot_y;
+		p = &pivot;
+	}
+
+	if(SDL_RenderCopyEx(renderer, texture, section, &rect, angle, p, flip) != 0)
 	{
 		LOG("Cannot blit to screen. SDL_RenderCopy error: %s", SDL_GetError());
 		ret = false;
@@ -124,26 +129,88 @@ bool ModuleRender::DrawTexture(SDL_Texture* texture, int x, int y, SDL_Rect* sec
 	return ret;
 }
 
-bool ModuleRender::DrawRectangle(const SDL_Rect& rect, SDL_Color color, float speed, bool useCamera)
+bool ModuleRender::DrawQuad(const SDL_Rect& rect, Uint8 r, Uint8 g, Uint8 b, Uint8 a, bool filled, bool use_camera)
 {
 	bool ret = true;
 
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
 
-	SDL_Rect dstRect { rect.x * SCREEN_SIZE, rect.y * SCREEN_SIZE, rect.w * SCREEN_SIZE, rect.h * SCREEN_SIZE };
-
-	if (useCamera)
+	SDL_Rect rec(rect);
+	if(use_camera)
 	{
-		dstRect.x -= (camera.x * speed);
-		dstRect.y -= (camera.y * speed);
+		rec.x = (int)(camera.x + rect.x * SCREEN_SIZE);
+		rec.y = (int)(camera.y + rect.y * SCREEN_SIZE);
+		rec.w *= SCREEN_SIZE;
+		rec.h *= SCREEN_SIZE;
 	}
 
-	if (SDL_RenderFillRect(renderer, &dstRect) != 0)
+	int result = (filled) ? SDL_RenderFillRect(renderer, &rec) : SDL_RenderDrawRect(renderer, &rec);
+	
+	if(result != 0)
 	{
 		LOG("Cannot draw quad to screen. SDL_RenderFillRect error: %s", SDL_GetError());
 		ret = false;
 	}
 
 	return ret;
+}
+
+bool ModuleRender::DrawLine(int x1, int y1, int x2, int y2, Uint8 r, Uint8 g, Uint8 b, Uint8 a, bool use_camera)
+{
+	bool ret = true;
+
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
+
+	int result = -1;
+
+	if(use_camera)
+		result = SDL_RenderDrawLine(renderer, camera.x + x1 * SCREEN_SIZE, camera.y + y1 * SCREEN_SIZE, camera.x + x2 * SCREEN_SIZE, camera.y + y2 * SCREEN_SIZE);
+	else
+		result = SDL_RenderDrawLine(renderer, x1 * SCREEN_SIZE, y1 * SCREEN_SIZE, x2 * SCREEN_SIZE, y2 * SCREEN_SIZE);
+
+	if(result != 0)
+	{
+		LOG("Cannot draw quad to screen. SDL_RenderFillRect error: %s", SDL_GetError());
+		ret = false;
+	}
+
+	return ret;
+}
+
+bool ModuleRender::DrawCircle(int x, int y, int radius, Uint8 r, Uint8 g, Uint8 b, Uint8 a, bool use_camera)
+{
+	bool ret = true;
+
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(renderer, r, g, b, a);
+
+	int result = -1;
+	SDL_Point points[360];
+
+	float factor = (float) M_PI / 180.0f;
+
+	for(uint i = 0; i < 360; ++i)
+	{
+		points[i].x = (int) (x + radius * cos( i * factor));
+		points[i].y = (int) (y + radius * sin( i * factor));
+	}
+
+	result = SDL_RenderDrawPoints(renderer, points, 360);
+
+	if(result != 0)
+	{
+		LOG("Cannot draw quad to screen. SDL_RenderFillRect error: %s", SDL_GetError());
+		ret = false;
+	}
+
+	return ret;
+}
+
+void ModuleRender::CameraMove(iPoint pos)
+{
+	camera.x = pos.x + (SCREEN_WIDTH / 2);	//	Camera position = target position
+
+	camera.y = pos.y;
 }

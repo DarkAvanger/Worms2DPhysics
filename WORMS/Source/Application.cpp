@@ -1,51 +1,48 @@
 #include "Application.h"
 
-#include "Module.h"
-#include "ModuleWindow.h"
-#include "ModuleInput.h"
-#include "ModuleTextures.h"
-#include "ModuleAudio.h"
-#include "ModulePlayer.h"
-#include "SceneIntro.h"
-#include "SceneLevel1.h"
-#include "ModuleParticles.h"
-#include "ModuleEnemies.h"
-#include "ModuleCollisions.h"
-#include "ModuleFadeToBlack.h"
-#include "ModuleFonts.h"
-#include "ModuleRender.h"
+ModuleScene* scene = nullptr;
 
 Application::Application()
 {
-	// The order in which the modules are added is very important.
-	// It will define the order in which Pre/Update/Post will be called
-	// Render should always be last, as our last action should be updating the screen
+	renderer = new ModuleRender(this);
+	window = new ModuleWindow(this);
+	textures = new ModuleTextures(this);
+	input = new ModuleInput(this);
+	audio = new ModuleAudio(this, true);
+	player = new ModulePlayer(this);
+	physics = new ModulePhysics(this);
+	scene = new ModuleScene(this);
 
-	modules[0] =	window =		new ModuleWindow(true);
-	modules[1] =	input =			new ModuleInput(true);
-	modules[2] =	textures =		new ModuleTextures(true);
-	modules[3] =	audio =			new ModuleAudio(true);
+	// The order of calls is very important!
+	// Modules will Init() Start() and Update in this order
+	// They will CleanUp() in reverse order
 
-	modules[4] =	sceneIntro =	new SceneIntro(true);
-	modules[5] =	sceneLevel_1 =	new SceneLevel1(false);		//Gameplay scene starts disabled
-	modules[6] =	player =		new ModulePlayer(false);	//Player starts disabled
-	modules[7] =	particles =		new ModuleParticles(true);
-	modules[8] =	enemies =		new ModuleEnemies(false);	//Enemies start disabled
+	// Main Modules
+	AddModule(window);
+	AddModule(physics);
+	
+	AddModule(textures);
+	AddModule(input);
+	AddModule(audio);
+	
+	// Scenes
+	AddModule(scene);
 
-	modules[9] =	collisions =	new ModuleCollisions(true);
-	modules[10] =	fade =			new ModuleFadeToBlack(true);
-	modules[11] =	fonts =			new ModuleFonts(true);
-	modules[12] =	render =		new ModuleRender(true);
+	
+	// Player
+	AddModule(player);
+	//Render
+	AddModule(renderer);
 }
 
 Application::~Application()
 {
-	for (int i = 0; i < NUM_MODULES; ++i)
+	p2List_item<Module*>* item = list_modules.getLast();
+
+	while(item != NULL)
 	{
-		// WARNING: When deleting a pointer, set it to nullptr afterwards
-		// It allows us for null check in other parts of the code
-		delete modules[i];
-		modules[i] = nullptr;
+		delete item->data;
+		item = item->prev;
 	}
 }
 
@@ -53,39 +50,99 @@ bool Application::Init()
 {
 	bool ret = true;
 
-	// All modules (active and disabled) will be initialized
-	for (int i = 0; i < NUM_MODULES && ret; ++i)
-		ret = modules[i]->Init();
+	// Call Init() in all modules
+	p2List_item<Module*>* item = list_modules.getFirst();
 
-	// Only active modules will be 'started'
-	for (int i = 0; i < NUM_MODULES && ret; ++i)
-		ret = modules[i]->IsEnabled() ? modules[i]->Start() : true;
+	while(item != NULL && ret == true)
+	{
+		ret = item->data->Init();
+		item = item->next;
+	}
 
+	// After all Init calls we call Start() in all modules
+	LOG("Application Start --------------");
+	item = list_modules.getFirst();
+
+	while(item != NULL && ret == true)
+	{
+		if(item->data->IsEnabled())
+			ret = item->data->Start();
+		item = item->next;
+	}
+	
 	return ret;
 }
 
-UpdateResult Application::Update()
+// Call PreUpdate, Update and PostUpdate on all modules
+UpdateStatus Application::Update()
 {
-	UpdateResult ret = UpdateResult::UPDATE_CONTINUE;
+	OPTICK_EVENT("Update");
+	UpdateStatus ret = UPDATE_CONTINUE;
+	p2List_item<Module*>* item = list_modules.getFirst();
 
-	for (int i = 0; i < NUM_MODULES && ret == UpdateResult::UPDATE_CONTINUE; ++i)
-		ret = modules[i]->IsEnabled() ? modules[i]->PreUpdate() : UpdateResult::UPDATE_CONTINUE;
+	while(item != NULL && ret == UPDATE_CONTINUE)
+	{
+		if(item->data->IsEnabled())
+			ret = item->data->PreUpdate();
+		item = item->next;
+	}
 
-	for (int i = 0; i < NUM_MODULES && ret == UpdateResult::UPDATE_CONTINUE; ++i)
-		ret = modules[i]->IsEnabled() ? modules[i]->Update() : UpdateResult::UPDATE_CONTINUE;
+	item = list_modules.getFirst();
 
-	for (int i = 0; i < NUM_MODULES && ret == UpdateResult::UPDATE_CONTINUE; ++i)
-		ret = modules[i]->IsEnabled() ? modules[i]->PostUpdate() : UpdateResult::UPDATE_CONTINUE;
+	while(item != NULL && ret == UPDATE_CONTINUE)
+	{
+		if(item->data->IsEnabled())
+  			ret = item->data->Update();
+		item = item->next;
+	}
 
+	item = list_modules.getFirst();
+
+	while(item != NULL && ret == UPDATE_CONTINUE)
+	{
+		if(item->data->IsEnabled())
+			ret = item->data->PostUpdate();
+		item = item->next;
+	}
+
+	SleepUntilFrameTime();
+	
 	return ret;
 }
- 
+
+void Application::SleepUntilFrameTime()
+{
+	OPTICK_EVENT("Wait");
+	//OPTICK_CATEGORY("Wait", Optick::Category::Wait);
+	globalTimer.Update();
+
+	deltaTime = globalTimer.getDeltaTime();
+
+
+	if (deltaTime <= FRAME_TIME)
+	{
+		sleepTime = (FRAME_TIME - deltaTime) * 1000;
+
+		Sleep(sleepTime);
+	}
+
+	globalTimer.Reset();
+}
+
 bool Application::CleanUp()
 {
 	bool ret = true;
+	p2List_item<Module*>* item = list_modules.getLast();
 
-	for (int i = NUM_MODULES - 1; i >= 0 && ret; --i)
-		ret = modules[i]->IsEnabled() ? modules[i]->CleanUp() : true;
-
+	while(item != NULL && ret == true)
+	{
+		ret = item->data->CleanUp();
+		item = item->prev;
+	}
 	return ret;
+}
+
+void Application::AddModule(Module* mod)
+{
+	list_modules.add(mod);
 }

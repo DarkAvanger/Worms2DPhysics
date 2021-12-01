@@ -1,9 +1,5 @@
-// ----------------------------------------------------
-// Point class
-// ----------------------------------------------------
-
-#ifndef __P2POINT_H__
-#define __P2POINT_H__
+#ifndef __POINT_H__
+#define __POINT_H__
 
 #include "Globals.h"
 #include <math.h>
@@ -39,7 +35,7 @@ public:
 	}
 
 	// Math ------------------------------------------------
-	Point operator -(const Point &v) const
+	Point operator -(const Point& v) const
 	{
 		Point r;
 
@@ -49,7 +45,7 @@ public:
 		return(r);
 	}
 
-	Point operator + (const Point &v) const
+	Point operator + (const Point& v) const
 	{
 		Point r;
 
@@ -59,7 +55,65 @@ public:
 		return(r);
 	}
 
-	const Point& operator -=(const Point &v)
+	Point operator /(const Point& v) const
+	{
+		Point r;
+
+		r.x = x / v.x;
+		r.y = y / v.y;
+
+		return(r);
+	}
+
+	Point operator /(const float v) const
+	{
+		Point r;
+
+		r.x = x / v;
+		r.y = y / v;
+
+		return(r);
+	}
+
+	Point operator *(const float num)
+	{
+		Point result;
+		result.x = this->x * num;
+		result.y = this->y * num;
+
+		return(result);
+	}
+
+	Point operator *(const Point& p)
+	{
+		Point result;
+		result.x = this->x * p.x;
+		result.y = this->y * p.y;
+
+		return(result);
+	}
+
+	Point Normalize()
+	{
+
+		//DEBUG
+		TYPE m = Module();
+
+		Point n;
+
+		if (m == 0)
+		{
+			n = { 0,0 };
+		}
+		else
+		{
+			n = { x / m, y / m };
+		}
+
+		return n;
+	}
+
+	const Point& operator -=(const Point& v)
 	{
 		x -= v.x;
 		y -= v.y;
@@ -67,10 +121,42 @@ public:
 		return(*this);
 	}
 
-	const Point& operator +=(const Point &v)
+	const Point& operator +=(const Point& v)
 	{
 		x += v.x;
 		y += v.y;
+
+		return(*this);
+	}
+
+	const Point& operator +=(int num)
+	{
+		x += num;
+		y += num;
+
+		return(*this);
+	}
+
+	const Point& operator *=(const int num)
+	{
+		x *= num;
+		y *= num;
+
+			return(*this);
+	}
+
+	const Point& operator *=(const float num)
+	{
+		x *= num;
+		y *= num;
+
+			return(*this);
+	}
+
+	const Point& operator *=(const Point& num)
+	{
+		x *= num.x;
+		y *= num.y;
 
 		return(*this);
 	}
@@ -105,13 +191,22 @@ public:
 		return(*this);
 	}
 
+	TYPE Module()
+	{
+		TYPE m;
+
+		m = sqrt(x * x + y * y);
+
+		return m;
+	}
+
 	// Distances ---------------------------------------------
 	TYPE DistanceTo(const Point& v) const
 	{
 		TYPE fx = x - v.x;
 		TYPE fy = y - v.y;
 
-		return (TYPE)sqrtf(float(fx*fx) + float(fy*fy));
+		return (TYPE)sqrtf(float(fx * fx) + float(fy * fy));
 	}
 
 	TYPE DistanceNoSqrt(const Point& v) const
@@ -119,16 +214,21 @@ public:
 		TYPE fx = x - v.x;
 		TYPE fy = y - v.y;
 
-		return (fx*fx) + (fy*fy);
+		return (fx * fx) + (fy * fy);
 	}
 
 	TYPE DistanceManhattan(const Point& v) const
 	{
 		return abs(v.x - x) + abs(v.y - y);
 	}
+
+	TYPE DistanceManhattan(const Point& v, const Point& v2) const
+	{
+		return abs(v.x - v2.x) + abs(v.y - v2.y);
+	}
 };
 
 typedef Point<int> iPoint;
 typedef Point<float> fPoint;
 
-#endif // __P2POINT_H__
+#endif // __POINT_H__

@@ -1,76 +1,90 @@
+#include "Globals.h"
+#include "Application.h"
 #include "ModuleWindow.h"
 
-#include "Application.h"
-#include "Globals.h"
+ModuleWindow::ModuleWindow(Application* app, bool start_enabled) : Module(app, start_enabled)
+{
+	window = NULL;
+	screen_surface = NULL;
+}
 
-#include "SDL/include/SDL.h"
-
-
-ModuleWindow::ModuleWindow(bool startEnabled) : Module(startEnabled)
-{}
-
+// Destructor
 ModuleWindow::~ModuleWindow()
-{}
+{
+}
 
+// Called before render is available
 bool ModuleWindow::Init()
 {
-	LOG("Init SDL window and surface");
+	LOG("Init SDL window & surface");
 	bool ret = true;
-	
-	// L2: DONE 2: Init the library and check for possible errors using SDL_GetError()
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
+
+	if(SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
-		LOG("SDL_VIDEO could not be initialized! SDL_Error: %s\n", SDL_GetError());
+		LOG("SDL_VIDEO could not initialize! SDL_Error: %s\n", SDL_GetError());
 		ret = false;
 	}
 	else
 	{
 		//Create window
+		int width = SCREEN_WIDTH * SCREEN_SIZE;
+		int height = SCREEN_HEIGHT * SCREEN_SIZE;
 		Uint32 flags = SDL_WINDOW_SHOWN;
 
-		if (WIN_FULLSCREEN == true) flags |= SDL_WINDOW_FULLSCREEN;
-		if (WIN_BORDERLESS == true)	flags |= SDL_WINDOW_BORDERLESS;
-		if (WIN_RESIZABLE == true) flags |= SDL_WINDOW_RESIZABLE;
-		if (WIN_FULLSCREEN_DESKTOP == true) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		if(WIN_FULLSCREEN == true)
+		{
+			flags |= SDL_WINDOW_FULLSCREEN;
+		}
 
-		// L2: DONE 3: Pick the width and height and experiment with different window flags.
-		// Create the window and check for errors
-		// Expose the SDL_window as a public variable to access it through the different application modules
-		window = SDL_CreateWindow("Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH * SCREEN_SIZE, SCREEN_HEIGHT * SCREEN_SIZE, flags);
+		if(WIN_RESIZABLE == true)
+		{
+			flags |= SDL_WINDOW_RESIZABLE;
+		}
 
-		if (window == nullptr)
+		if(WIN_BORDERLESS == true)
+		{
+			flags |= SDL_WINDOW_BORDERLESS;
+		}
+
+		if(WIN_FULLSCREEN_DESKTOP == true)
+		{
+			flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		}
+
+		window = SDL_CreateWindow(TITLE, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, flags);
+
+		if(window == NULL)
 		{
 			LOG("Window could not be created! SDL_Error: %s\n", SDL_GetError());
 			ret = false;
 		}
 		else
 		{
-			// L2: DONE 4: Create a screen surface and keep it as a public variable
-			screenSurface = SDL_GetWindowSurface(window);
+			//Get window surface
+			screen_surface = SDL_GetWindowSurface(window);
 		}
 	}
 
 	return ret;
 }
 
+// Called before quitting
 bool ModuleWindow::CleanUp()
 {
-	// L2: DONE 5: Fill with code the CleanUp() method
-	// Remove all the data and uninitialize SDL
-
 	LOG("Destroying SDL window and quitting all SDL systems");
 
-	// Destroy window
-	if (window != nullptr) SDL_DestroyWindow(window);
+	//Destroy window
+	if(window != NULL)
+	{
+		SDL_DestroyWindow(window);
+	}
 
-	// Quit SDL subsystems
+	//Quit SDL subsystems
 	SDL_Quit();
-
 	return true;
 }
 
-void ModuleWindow::SetWinTitle(const char* title)
+void ModuleWindow::SetTitle(const char* title)
 {
 	SDL_SetWindowTitle(window, title);
 }
-

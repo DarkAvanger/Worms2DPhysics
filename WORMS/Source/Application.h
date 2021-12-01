@@ -1,71 +1,50 @@
-#ifndef __APPLICATION_H__
-#define __APPLICATION_H__
+#pragma once
 
-#include "Globals.h"
+#include "p2List.h"
+#include "Module.h"
+#include "ModuleWindow.h"
+#include "ModuleRender.h"
+#include "ModuleTextures.h"
+#include "ModuleInput.h"
+#include "ModuleAudio.h"
+#include "ModulePlayer.h"
+#include "ModulePhysics.h"
+#include "ModuleScene.h"
+#include "Timer.h"
 
-#define NUM_MODULES 13
+#include "Optick/include/optick.h"
 
-class Module;
-class ModuleWindow;
-class ModuleInput;
-class ModuleTextures;
-class ModuleAudio;
-class ModulePlayer;
-class SceneIntro;
-class SceneLevel1;
-class ModuleParticles;
-class ModuleCollisions;
-class ModuleEnemies;
-class ModuleFadeToBlack;
-class ModuleFonts;
-class ModuleRender;
+#define FPS 60
+#define FRAME_TIME (1.0/FPS)
 
 class Application
 {
 public:
+	ModuleRender* renderer;
+	ModuleWindow* window;
+	ModuleTextures* textures;
+	ModuleInput* input;
+	ModuleAudio* audio;
+	ModulePlayer* player;
+	ModulePhysics* physics;
 
-	// Constructor. Creates all necessary modules for the application
-	Application();
+private:
 
-	// Destructor. Removes all module objects
-	~Application();
-
-	// Initializes all modules
-	bool Init();
-
-	// Updates all modules (PreUpdate, Update and PostUpdate)
-	UpdateResult Update();
-
-	// Releases all the application data
-	bool CleanUp();
-
+	p2List<Module*> list_modules;
+	Timer globalTimer;
+	float deltaTime = 0;
+	float sleepTime= 0;
 public:
 
-	// Array to store the pointers for the different modules
-	Module* modules[NUM_MODULES];
+	Application();
+	~Application();
 
-	// All the modules stored individually
-	ModuleWindow* window = nullptr;
-	ModuleInput* input = nullptr;
-	ModuleTextures* textures = nullptr;
-	ModuleAudio* audio = nullptr;
+	bool Init();
+	UpdateStatus Update();
+	bool CleanUp();
+	void SleepUntilFrameTime();
 
-	ModulePlayer* player = nullptr;
+private:
 
-	SceneIntro* sceneIntro = nullptr;
-	SceneLevel1* sceneLevel_1 = nullptr;
-
-	ModuleEnemies* enemies = nullptr;
-	ModuleParticles* particles = nullptr;
-
-	ModuleCollisions* collisions = nullptr;
-	ModuleFadeToBlack* fade = nullptr;
-	ModuleFonts* fonts = nullptr;
-
-	ModuleRender* render = nullptr;
+	void AddModule(Module* mod);
 };
-
-// Global var made extern for Application ---
-extern Application* App;
-
-#endif // __APPLICATION_H__

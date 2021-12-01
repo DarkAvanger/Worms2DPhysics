@@ -1,19 +1,14 @@
+#include <stdlib.h>
 #include "Application.h"
 #include "Globals.h"
 #include "MemLeaks.h"
+#include "Optick/include/optick.h"
 
-// Include SDL libraries
-#include "SDL/include/SDL.h"	// Required for SDL base systems functionality
+#include "SDL/include/SDL.h"
+//#pragma comment( lib, "SDL/libx86/SDL2.lib" )
+//#pragma comment( lib, "SDL/libx86/SDL2main.lib" )
 
-// Define libraries required by linker
-// WARNING: Not all compilers support this option and it couples 
-// source code with build system, it's recommended to keep both 
-// separated, in case of multiple build configurations
-//#pragma comment(lib, "SDL/lib/x86/SDL2.lib")
-//#pragma comment(lib, "SDL/lib/x86/SDL2main.lib")
-
-// Main application states
-enum class MainState
+enum main_states
 {
 	MAIN_CREATION,
 	MAIN_START,
@@ -22,75 +17,80 @@ enum class MainState
 	MAIN_EXIT
 };
 
-Application* App = nullptr;
-
-int main(int argc, char* argv[])
+int main(int argc, char ** argv)
 {
-	ReportMemoryLeaks();
+	LOG("Starting game '%s'...", TITLE);
 
-	int main_result = EXIT_FAILURE;
-	MainState state = MainState::MAIN_CREATION;
+	int main_return = EXIT_FAILURE;
+	main_states state = MAIN_CREATION;
+	Application* App = NULL;
 
-	while (state != MainState::MAIN_EXIT)
+	while (state != MAIN_EXIT)
 	{
 		switch (state)
 		{
-			case MainState::MAIN_CREATION:
-			{
-				LOG("Application Creation --------------\n");
-				App = new Application();
-				state = MainState::MAIN_START;
-			}	break;
+		case MAIN_CREATION:
 
-			case MainState::MAIN_START:
-			{
-				LOG("Application Start --------------\n");
-				if(App->Init() == false)
-				{
-					LOG("Application Init exits with error -----\n");
-					state = MainState::MAIN_EXIT;
-				}
-				else
-				{
-					state = MainState::MAIN_UPDATE;
-				}
-			}	break;
+			LOG("-------------- Application Creation --------------");
+			App = new Application();
+			state = MAIN_START;
+			break;
 
-			case MainState::MAIN_UPDATE:
-			{
-				UpdateResult status = App->Update();
+		case MAIN_START:
 
-				if (status == UpdateResult::UPDATE_ERROR)
-				{
-					LOG("Application Update exits with error -----\n");
-					state = MainState::MAIN_EXIT;
-				}
-				else if (status == UpdateResult::UPDATE_STOP)
-				{
-					state = MainState::MAIN_FINISH;
-				}
-			}	break;
-
-			case MainState::MAIN_FINISH:
+			LOG("-------------- Application Init --------------");
+			if (App->Init() == false)
 			{
-				LOG("Application Finish --------------\n");
-				if (App->CleanUp() == true)
-				{
-					main_result = EXIT_SUCCESS;
-				}
-				else
-				{
-					LOG("Application CleanUp exits with error -----\n");
-				}
-				state = MainState::MAIN_EXIT;
+				LOG("Application Init exits with ERROR");
+				state = MAIN_EXIT;
 			}
-			default: break;
+			else
+			{
+				state = MAIN_UPDATE;
+				LOG("-------------- Application Update --------------");
+			}
+
+			break;
+
+		case MAIN_UPDATE:
+		{
+			OPTICK_FRAME("GasLeak");
+			int update_return = App->Update();
+
+			if (update_return == UPDATE_ERROR)
+			{
+				LOG("Application Update exits with ERROR");
+				state = MAIN_EXIT;
+			}
+
+			if (update_return == UPDATE_STOP)
+				state = MAIN_FINISH;
+		}
+			break;
+
+		case MAIN_FINISH:
+
+			LOG("-------------- Application CleanUp --------------");
+			if (App->CleanUp() == false)
+			{
+				LOG("Application CleanUp exits with ERROR");
+			}
+			else
+				main_return = EXIT_SUCCESS;
+
+			state = MAIN_EXIT;
+
+
+			break;
+
 		}
 	}
 
+	delete App;
+	
+	ReportMemoryLeaks();
+
 	LOG("\nBye :)\n");
 
-	delete App;
-
-	return main_result;
+	return main_return;
 }
