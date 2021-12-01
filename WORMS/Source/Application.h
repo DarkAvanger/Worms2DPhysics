@@ -13,9 +13,6 @@
 #include "Timer.h"
 
 
-#define FPS 60
-#define FRAME_TIME (1.0/FPS)
-
 class Application
 {
 public:

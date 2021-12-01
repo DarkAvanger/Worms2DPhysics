@@ -2,6 +2,12 @@
 #include "Application.h"
 #include "Globals.h"
 #include "MemLeaks.h"
+#include <time.h>
+
+#include <iostream>
+#include <chrono>
+#include <stack>
+using namespace std;
 
 #include "SDL/include/SDL.h"
 //#pragma comment( lib, "SDL/libx86/SDL2.lib" )
@@ -26,6 +32,19 @@ int main(int argc, char ** argv)
 
 	while (state != MAIN_EXIT)
 	{
+
+		const int FPS = 60;
+		const int frameDelay = 1000 / FPS;
+
+		Uint32 frameStart;
+		int frameTime;
+
+		frameStart = SDL_GetTicks();
+		frameTime = SDL_GetTicks() - frameStart;
+
+		if (frameDelay > frameTime) {
+			SDL_Delay(frameDelay - frameTime);
+		}
 		switch (state)
 		{
 		case MAIN_CREATION:
